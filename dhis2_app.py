@@ -1,9 +1,9 @@
 import os
 import sys
 import time
-import hashlib   # 🔐 Added for secure cryptographic key verification
-import datetime  # 📅 Added to handle subscription expiration checks
-import urllib.request  # 🌐 Added to fetch subscription keys online from GitHub
+import hashlib  
+import datetime  
+import urllib.request  
 import urllib.error
 
 # =========================================================================
@@ -36,6 +36,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.edge.service import Service as EdgeService                  # 🛠️ Added for automatic driver management
+from webdriver_manager.microsoft import EdgeChromiumDriverManager  # 🛠️ Added to download the matching driver automatically
 
 import config
 
@@ -145,12 +147,14 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
             messagebox.showerror("License Error", f"'{target_facility}' does not possess an active subscription or valid activation signature details.")
             return
         
-        # 2. Launch Microsoft Edge natively
+        # 2. Launch Microsoft Edge natively with dynamic driver matchmaking 🛠️
         status_label.config(text="⚡ Launching Microsoft Edge...", foreground="#0056b3")
         options = webdriver.EdgeOptions()
         options.add_argument("--start-maximized")
         
-        driver = webdriver.Edge(options=options) 
+        # Automatically detects the user's Edge version (e.g., 149) and provisions the proper driver
+        service = EdgeService(EdgeChromiumDriverManager().install())
+        driver = webdriver.Edge(service=service, options=options) 
         wait = WebDriverWait(driver, 20)
 
         # 3. Handle Login Flow
@@ -256,7 +260,7 @@ def start_pipeline_thread():
 # --- MODERN GUI APP LAYOUT ---
 root = tk.Tk()
 root.title("DHIS2 Utility Dashboard")
-root.geometry("450x620") # 📐 Enlarged height to 620px so everything is fully visible
+root.geometry("450x620") 
 root.configure(bg="#f4f6f9")
 root.resizable(False, False)
 
@@ -324,7 +328,6 @@ payment_info = (
     "to receive your new 30-day activation key token."
 )
 
-# 🛠️ Added wraplength=370 so text cleanly auto-wraps inside the window borders
 tk.Label(payment_frame, text=payment_info, font=("Segoe UI", 9), justify="left", bg="#f4f6f9", fg="#333333", wraplength=370).pack(anchor="w")
 
 status_label = ttk.Label(frame, text="System Ready", font=("Segoe UI", 9, "italic"), foreground="gray")
