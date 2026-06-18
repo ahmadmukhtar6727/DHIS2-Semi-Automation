@@ -3,6 +3,8 @@ import sys
 import time
 import hashlib   # 🔐 Added for secure cryptographic key verification
 import datetime  # 📅 Added to handle subscription expiration checks
+import urllib.request  # 🌐 Added to fetch subscription keys online from GitHub
+import urllib.error
 
 # =========================================================================
 # 🔥 DIRECT PATH & SECURITY CONFIGURATION
@@ -20,6 +22,9 @@ os.chdir(BASE_DIR)
 # 🔑 Change this master passphrase to something unique to you!
 # Keep it confidential so users cannot generate their own keys.
 SECRET_SALT = "AhmadMukhtarSecureDHIS2Key#2026"
+
+# 🔗 Your exact live GitHub RAW configuration link
+GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/ahmadmukhtar6727/DHIS2-Semi-Automation/main/data/allowed_facilities.txt"
 # =========================================================================
 
 import tkinter as tk
@@ -58,42 +63,68 @@ def verify_subscription_license(facility_name, expiry_date_str, provided_key):
         return "INVALID_FORMAT"
 
 def local_load_facilities():
-    """Reads the configuration file and only loads non-expired, verified facility subscriptions."""
-    target_path = os.path.join(BASE_DIR, "data", "allowed_facilities.txt")
-    if not os.path.exists(target_path):
-        return []
+    """Fetches the latest active subscriptions directly from GitHub, with an offline local fallback."""
+    local_path = os.path.join(BASE_DIR, "data", "allowed_facilities.txt")
+    lines = []
     
-    valid_facilities = []
-    
-    with open(target_path, "r", encoding="utf-8") as file:
-        is_facility_section = False
-        for line in file:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
+    # 1. Try to fetch the latest subscription updates live from your GitHub repository
+    try:
+        print("🌐 Syncing subscription licenses from GitHub status endpoints...")
+        req = urllib.request.Request(
+            GITHUB_LICENSE_URL, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        )
+        with urllib.request.urlopen(req, timeout=7) as response:
+            content = response.read().decode('utf-8')
+            lines = content.splitlines()
             
-            if line.upper() == "[FACILITIES]":
-                is_facility_section = True
-                continue
+        # Update local backup cache in case they run it offline next time
+        try:
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "w", encoding="utf-8") as backup_file:
+                backup_file.write(content)
+        except Exception:
+            pass
+            
+    # 2. Fallback to local offline cache file if there is no internet connection available
+    except Exception:
+        print("⚠️ Offline or unable to connect to GitHub sync. Using local cache data.")
+        if os.path.exists(local_path):
+            with open(local_path, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+        else:
+            return []
+            
+    valid_facilities = []
+    is_facility_section = False
+    
+    # 3. Process and cryptographically verify the downloaded licenses
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        
+        if line.upper() == "[FACILITIES]":
+            is_facility_section = True
+            continue
+            
+        if is_facility_section and "=" in line:
+            parts = line.split("=", 1)
+            facility_name = parts[0].strip()
+            license_data = parts[1].strip()
+            
+            if "|" in license_data:
+                expiry_date_str, activation_key = license_data.split("|", 1)
                 
-            if is_facility_section and "=" in line:
-                parts = line.split("=", 1)
-                facility_name = parts[0].strip()
-                license_data = parts[1].strip()
+                status = verify_subscription_license(facility_name, expiry_date_str, activation_key)
                 
-                # Expecting format: ExpiryDate|ActivationKey (e.g., 2027-06-30|8f7a3c2e1b9d4e5f)
-                if "|" in license_data:
-                    expiry_date_str, activation_key = license_data.split("|", 1)
+                if status == "ACTIVE":
+                    valid_facilities.append(facility_name)
+                elif status == "EXPIRED":
+                    print(f"🛑 Subscription EXPIRED on server for: {facility_name}")
+                else:
+                    print(f"⚠️ Security Tamper Alert detected for entry: {facility_name}")
                     
-                    status = verify_subscription_license(facility_name, expiry_date_str, activation_key)
-                    
-                    if status == "ACTIVE":
-                        valid_facilities.append(facility_name)
-                    elif status == "EXPIRED":
-                        print(f"🛑 Subscription EXPIRED for facility: {facility_name}")
-                    else:
-                        print(f"⚠️ Security Alert: Tampered or invalid key for: {facility_name}")
-                        
     return valid_facilities
 
 # --- CORE AUTOMATION ENGINE ---
@@ -106,12 +137,12 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         
         if not allowed_facilities:
             status_label.config(text="❌ Error: No validated facilities found.", foreground="red")
-            messagebox.showerror("Error", f"No validated or active facility subscriptions found inside:\n{os.path.join(BASE_DIR, 'data', 'allowed_facilities.txt')}")
+            messagebox.showerror("Error", "No validated or active facility subscriptions found. Please connect to the internet or renew your access.")
             return
 
         if target_facility not in allowed_facilities:
             status_label.config(text="❌ Error: License Denied.", foreground="red")
-            messagebox.showerror("License Error", f"'{target_facility}' does not possess a valid activation signature file or active subscription details.")
+            messagebox.showerror("License Error", f"'{target_facility}' does not possess an active subscription or valid activation signature details.")
             return
         
         # 2. Launch Microsoft Edge natively
