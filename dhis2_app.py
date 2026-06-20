@@ -43,18 +43,23 @@ import config
 # Global dictionary to map facility names to their assigned secure usernames
 FACILITY_USER_MAP = {}
 
+# =========================================================================
+# 🔐 STEP 2: STREAMLINED LICENSE VERIFICATION METHOD
+# =========================================================================
 def verify_subscription_license(facility_name, expiry_date_str, username, provided_key):
-    """Verifies if the activation key cryptographically binds the facility name, 
-    the assigned username, and the expiration date together."""
+    """Streamlined verification strategy checking system expiration tokens securely."""
     try:
-        # Cryptographic salt calculation including the username for heightened security
-        raw_string = f"{facility_name.strip()}{expiry_date_str.strip()}{username.strip()}{SECRET_SALT}"
+        exp_str = expiry_date_str.strip()
+        p_key = provided_key.strip()
+        
+        # Match the simplified keygen strategy (Expiry + Salt)
+        raw_string = f"{exp_str}{SECRET_SALT}"
         expected_key = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()[:16]
         
-        if expected_key != provided_key.strip():
+        if expected_key != p_key:
             return "INVALID_KEY"
             
-        expiry_date = datetime.datetime.strptime(expiry_date_str.strip(), "%Y-%m-%d").date()
+        expiry_date = datetime.datetime.strptime(exp_str, "%Y-%m-%d").date()
         current_date = datetime.date.today()
         
         if current_date > expiry_date:
@@ -86,15 +91,15 @@ def local_load_facilities():
                 backup_file.write(content)
         except Exception:
             pass
-            
-    except Exception:
-        print("⚠️ Offline or unable to connect to GitHub sync. Using local cache data.")
+
+    except Exception as e:
+        print(f"🛑 Network Error details: {str(e)}")
         if os.path.exists(local_path):
             with open(local_path, "r", encoding="utf-8") as file:
                 lines = file.readlines()
         else:
             return []
-            
+             
     valid_facilities = []
     is_facility_section = False
     FACILITY_USER_MAP.clear()
@@ -113,8 +118,7 @@ def local_load_facilities():
             facility_name = parts[0].strip()
             license_data = parts[1].strip()
             
-            # Expecting new format: ExpiryDate|AssignedUsername|ActivationKey
-            # e.g., 2026-07-17|general_user_123|8f7a3c2e1b9d4e5f
+            # Expecting format: ExpiryDate|AssignedUsername|ActivationKey
             if license_data.count("|") == 2:
                 expiry_date_str, assigned_username, activation_key = license_data.split("|", 2)
                 
@@ -122,7 +126,7 @@ def local_load_facilities():
                 
                 if status == "ACTIVE":
                     valid_facilities.append(facility_name)
-                    FACILITY_USER_MAP[facility_name] = assigned_username  # Save username to map
+                    FACILITY_USER_MAP[facility_name] = assigned_username.strip()  # Save username to map
                 elif status == "EXPIRED":
                     print(f"🛑 Subscription EXPIRED on server for: {facility_name}")
                 else:
@@ -176,25 +180,48 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         messagebox.showinfo("Staff Handoff Actions", handoff_message)
 
         status_label.config(text="🚀 Injecting script and executing zero-fill...", foreground="#0056b3")
+        
+        # =========================================================================
+        # ⚡ ASYNC BATCHED SCRIPT INJECTION (FIXES TIMEOUT CRASHES ON LARGE FORMS)
+        # =========================================================================
         js_script = """
+        var callback = arguments[arguments.length - 1];
         var fields = document.querySelectorAll("input.entryfield, input[id*='dataelement']");
         if (fields.length === 0) { fields = document.querySelectorAll("input[type='text'], input[type='number']"); }
+        
         var filledCount = 0;
-        fields.forEach(function(field) {
-            if (field.offsetWidth > 0 && field.offsetHeight > 0 && !field.disabled) {
-                if (field.value.trim() === "") {
-                    field.value = "0";
-                    var changeEvent = new Event('change', { bubbles: true });
-                    var blurEvent = new Event('blur', { bubbles: true });
-                    field.dispatchEvent(changeEvent);
-                    field.dispatchEvent(blurEvent);
-                    filledCount++;
+        var index = 0;
+        var batchSize = 30; // Throttles processing into small waves to prevent freezing the UI
+
+        function processBatch() {
+            var limit = Math.min(index + batchSize, fields.length);
+            for (; index < limit; index++) {
+                var field = fields[index];
+                if (field.offsetWidth > 0 && field.offsetHeight > 0 && !field.disabled) {
+                    if (field.value.trim() === "") {
+                        field.value = "0";
+                        var changeEvent = new Event('change', { bubbles: true });
+                        var blurEvent = new Event('blur', { bubbles: true });
+                        field.dispatchEvent(changeEvent);
+                        field.dispatchEvent(blurEvent);
+                        filledCount++;
+                    }
                 }
             }
-        });
-        return filledCount;
+            
+            if (index < fields.length) {
+                setTimeout(processBatch, 40); // 40ms structural pause between batches
+            } else {
+                callback(filledCount); // Safely returns result to Selenium when finished
+            }
+        }
+        processBatch();
         """
-        zero_count = driver.execute_script(js_script)
+        
+        # Give Selenium script runtime tolerance for massive datasets
+        driver.set_script_timeout(45)
+        zero_count = driver.execute_async_script(js_script)
+        
         status_label.config(text=f"Syncing {zero_count} zero-filled records...", foreground="#0056b3")
         time.sleep(3) 
         
@@ -315,7 +342,7 @@ payment_frame.pack(fill="x", pady=(20, 0))
 
 payment_info = (
     "To renew or activate a facility subscription, please transfer "
-    "your monthly fee of 1,500 NGN for 1-month access to:\n\n"
+    "your monthly fee of 2,000 NGN for 1-month access to:\n\n"
     "🏦 Bank: Palmpay\n"
     "🔢 Account Number: 8167270427\n"
     "👤 Name: Ahmad Mukhtar\n\n"
