@@ -1,1 +1,3 @@
-Bichi General Hospital
+[FACILITIES]
+Bichi General Hospital = 2026-08-19|kahmad|320982cdde142f53
+Admin Facilities = 2026-06-20|jzubayr|6ab1960d12af4978
