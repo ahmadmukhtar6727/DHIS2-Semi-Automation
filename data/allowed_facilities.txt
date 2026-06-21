@@ -1,3 +1,4 @@
 [FACILITIES]
 Bichi General Hospital = 2026-08-19|kahmad|320982cdde142f53
 Unguwa Uku Primary Healthcare Center = 2026-06-29|idauda|a6aaa13d58984c1c
+Takai Comprehensive Centre = 2026-06-29|agarba2|a6aaa13d58984c1c
