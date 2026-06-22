@@ -5,3 +5,4 @@ Takai Comprehensive Centre = 2026-06-29|agarba2|a6aaa13d58984c1c
 Rigiyar Lemo MCH = 2026-06-29|adoafiz|a6aaa13d58984c1c
 Doguwa General Hospital = 2026-06-29|sshuaibu|a6aaa13d58984c1c
 Wudil General Hospital = 2026-06-30|bkawu|ed1c44e4ee239579
+Nuhu Bamali Martenity Hospital = 2026-06-30|Msalisu|ed1c44e4ee239579
