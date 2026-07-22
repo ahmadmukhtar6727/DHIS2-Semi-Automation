@@ -6,31 +6,22 @@ import datetime
 import urllib.request  
 import urllib.error
 
-# =========================================================================
-# 🔥 DIRECT PATH & SECURITY CONFIGURATION
-# =========================================================================
 def get_base_path():
     """Returns the correct directory path whether running as script or compiled .exe"""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.abspath(".")
 
-# Force the app to work where the executable is launched
 BASE_DIR = get_base_path()
 os.chdir(BASE_DIR)
 
-# 🔑 Master Passphrase - locks both facility name and assigned username
 SECRET_SALT = "AhmadMukhtarSecureDHIS2Key#2026"
-
-# 🔗 Your exact live GitHub RAW configuration link
 GITHUB_LICENSE_URL = "https://raw.githubusercontent.com/ahmadmukhtar6727/DHIS2-Semi-Automation/main/data/allowed_facilities.txt"
-# =========================================================================
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 
-# Selenium Dependencies
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -40,19 +31,14 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
 import config
 
-# Global dictionary to map facility names to their assigned secure usernames
 FACILITY_USER_MAP = {}
 
-# =========================================================================
-# 🔐 STEP 2: STREAMLINED LICENSE VERIFICATION METHOD
-# =========================================================================
 def verify_subscription_license(facility_name, expiry_date_str, username, provided_key):
     """Streamlined verification strategy checking system expiration tokens securely."""
     try:
         exp_str = expiry_date_str.strip()
         p_key = provided_key.strip()
         
-        # Match the simplified keygen strategy (Expiry + Salt)
         raw_string = f"{exp_str}{SECRET_SALT}"
         expected_key = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()[:16]
         
@@ -85,12 +71,12 @@ def local_load_facilities():
             content = response.read().decode('utf-8')
             lines = content.splitlines()
             
-        try:
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            with open(local_path, "w", encoding="utf-8") as backup_file:
-                backup_file.write(content)
-        except Exception:
-            pass
+            try:
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                with open(local_path, "w", encoding="utf-8") as backup_file:
+                    backup_file.write(content)
+            except Exception:
+                pass
 
     except Exception as e:
         print(f"🛑 Network Error details: {str(e)}")
@@ -118,7 +104,6 @@ def local_load_facilities():
             facility_name = parts[0].strip()
             license_data = parts[1].strip()
             
-            # Expecting format: ExpiryDate|AssignedUsername|ActivationKey
             if license_data.count("|") == 2:
                 expiry_date_str, assigned_username, activation_key = license_data.split("|", 2)
                 
@@ -126,7 +111,7 @@ def local_load_facilities():
                 
                 if status == "ACTIVE":
                     valid_facilities.append(facility_name)
-                    FACILITY_USER_MAP[facility_name] = assigned_username.strip()  # Save username to map
+                    FACILITY_USER_MAP[facility_name] = assigned_username.strip()
                 elif status == "EXPIRED":
                     print(f"🛑 Subscription EXPIRED on server for: {facility_name}")
                 else:
@@ -134,7 +119,7 @@ def local_load_facilities():
                     
     return valid_facilities
 
-# --- CORE AUTOMATION ENGINE ---
+
 def run_zero_filling_pipeline(target_facility, username, password, status_label, upload_btn):
     driver = None
     try:
@@ -146,7 +131,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
             messagebox.showerror("License Error", "Facility does not possess an active subscription or valid activation details.")
             return
         
-        # Enforce that the running username matches the cryptographically assigned secure username
         secure_assigned_user = FACILITY_USER_MAP.get(target_facility, "")
         if username != secure_assigned_user:
             status_label.config(text="❌ Error: Username Altered.", foreground="red")
@@ -179,11 +163,53 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         )
         messagebox.showinfo("Staff Handoff Actions", handoff_message)
 
-        status_label.config(text="🚀 Injecting script and executing zero-fill...", foreground="#0056b3")
+        status_label.config(text="🔍 Verifying target facility in DHIS2 UI...", foreground="#0056b3")
         
-        # =========================================================================
-        # ⚡ ASYNC BATCHED SCRIPT INJECTION (FIXES TIMEOUT CRASHES ON LARGE FORMS)
-        # =========================================================================
+        # Robust JS check targeting DHIS2's active selection panel and global variables
+        verify_org_script = """
+        // 1. Check DHIS2's active header/title displays for selected Org Unit
+        var displaySelectors = [
+            "#selectedOrgUnitName", "#selectedOrgUnit", 
+            "#orgUnitField", ".org-unit-title", ".selected-org-unit"
+        ];
+        for (var i = 0; i < displaySelectors.length; i++) {
+            var el = document.querySelector(displaySelectors[i]);
+            if (el && el.innerText.trim().length > 0) {
+                return el.innerText.trim();
+            }
+        }
+        
+        // 2. Check tree elements that have active selection classes
+        var activeNodes = document.querySelectorAll(".tree-node-selected, a.selected, li.selected > a");
+        if (activeNodes.length > 0) {
+            return activeNodes[activeNodes.length - 1].innerText.trim();
+        }
+
+        // 3. Fallback to DHIS2 global JS state if available
+        if (typeof selection !== 'undefined' && selection.getSelected) {
+            var selectedUnits = selection.getSelected();
+            if (selectedUnits && selectedUnits.length > 0) {
+                return selectedUnits[0];
+            }
+        }
+        return "";
+        """
+        current_ui_org = driver.execute_script(verify_org_script)
+        
+        # Verify if the target facility name is part of the currently active Org Unit selection
+        if current_ui_org and target_facility.strip().lower() not in current_ui_org.strip().lower():
+            status_label.config(text="❌ Error: Facility Mismatch.", foreground="red")
+            messagebox.showerror(
+                "Security & Facility Enforcement", 
+                f"Unauthorized Facility Target!\n\n"
+                f"Selected in App: {target_facility}\n"
+                f"Active in DHIS2: {current_ui_org}\n\n"
+                f"Execution stopped. You can only run automation on the facility selected in your subscription dropdown."
+            )
+            return
+
+        status_label.config(text="🚀 Injecting script and executing zero-fill...", foreground="#0056b3")
+
         js_script = """
         var callback = arguments[arguments.length - 1];
         var fields = document.querySelectorAll("input.entryfield, input[id*='dataelement']");
@@ -218,7 +244,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         processBatch();
         """
         
-        # Give Selenium script runtime tolerance for massive datasets
         driver.set_script_timeout(45)
         zero_count = driver.execute_async_script(js_script)
         
@@ -247,13 +272,11 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         upload_btn.config(state="normal")
 
 
-# --- UI EVENT HANDLING ---
 def on_facility_select(event):
     """Fired automatically when a facility is picked. Injects and locks down the assigned username."""
     selected_facility = facility_entry.get()
     assigned_user = FACILITY_USER_MAP.get(selected_facility, "")
     
-    # Temporarily change state to normal to edit text field, then freeze it
     username_entry.config(state="normal")
     username_entry.delete(0, tk.END)
     username_entry.insert(0, assigned_user)
@@ -275,8 +298,6 @@ def start_pipeline_thread():
         daemon=True
     ).start()
 
-
-# --- MODERN GUI APP LAYOUT ---
 root = tk.Tk()
 root.title("DHIS2 Zero Filling")
 root.geometry("450x620") 
@@ -295,19 +316,16 @@ header.pack(fill="x", pady=(0, 15))
 frame = ttk.Frame(root, padding=20)
 frame.pack(fill="both", expand=True)
 
-# 🔄 Dropdown Selection Menu
 ttk.Label(frame, text="Select Activated Facility / Org Unit Name:").pack(anchor="w", pady=(0, 2))
 facility_options = local_load_facilities()
 
 facility_entry = ttk.Combobox(frame, values=facility_options, state="readonly", width=37)
 facility_entry.pack(fill="x", pady=(0, 12))
-facility_entry.bind("<<ComboboxSelected>>", on_facility_select) # Hook selection event
+facility_entry.bind("<<ComboboxSelected>>", on_facility_select)
 
-# 🏷️ Subscription Indicator
 status_frame = ttk.Frame(frame, padding=5)
 status_frame.pack(fill="x", pady=(0, 12))
 
-# Username Box - Now defaults to Readonly to protect from physical changes
 ttk.Label(frame, text="DHIS2 Automated Username (Locked):").pack(anchor="w", pady=(0, 2))
 username_entry = ttk.Entry(frame, width=40, font=("Segoe UI", 10, "bold"))
 username_entry.pack(fill="x", pady=(0, 12))
@@ -316,7 +334,6 @@ if facility_options:
     facility_entry.current(0)
     sub_status_lbl = tk.Label(status_frame, text="🟢 Status: Subscribed & Active", font=("Segoe UI", 10, "bold"), fg="green", bg="#f4f6f9")
     sub_status_lbl.pack(anchor="w")
-    # Trigger initial load for the first item in dropdown list
     on_facility_select(None)
 else:
     facility_entry.set("No active facilities registered")
@@ -325,25 +342,22 @@ else:
     username_entry.insert(0, "No Active Subscription")
     username_entry.config(state="readonly")
 
-# Password Box
 ttk.Label(frame, text="Enter DHIS2 Account Password:").pack(anchor="w", pady=(0, 2))
 password_entry = ttk.Entry(frame, show="*", width=40)
 password_entry.pack(fill="x", pady=(0, 20))
 
-# Run Button
 style.configure("Action.TButton", font=("Segoe UI", 11, "bold"), foreground="white", background="#17b978")
 style.map("Action.TButton", background=[("disabled", "#bdc3c7"), ("active", "#119961")])
 upload_btn = ttk.Button(frame, text="🚀 Run Zero-Filling Automation", style="Action.TButton", command=start_pipeline_thread)
 upload_btn.pack(fill="x", ipady=5)
 
-# --- 💳 SUBSCRIPTION PORTAL ---
 payment_frame = tk.LabelFrame(frame, text=" Monthly Subscription Renewal ", font=("Segoe UI", 9, "bold"), bg="#f4f6f9", fg="#1e3d59", padx=10, pady=10)
 payment_frame.pack(fill="x", pady=(20, 0))
 
 payment_info = (
     "To renew or activate a facility subscription, please transfer "
     "your monthly fee of 2,000 NGN for 1-month access to:\n\n"
-    "🏦 Bank: Palmpay\n"
+    "🏦 Bank: Moniepoint\n"
     "🔢 Account Number: 8167270427\n"
     "👤 Name: Ahmad Mukhtar\n\n"
     "After payment, provide your Facility Name & DHIS2 Username to the developer via WhatsApp."
