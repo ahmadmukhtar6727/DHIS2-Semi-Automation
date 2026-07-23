@@ -1,5 +1,5 @@
 [FACILITIES]
-Bichi General Hospital = 2026-09-30|kahmad|d14ed8ee8abf7935
+Bichi General Hospital = 2026-10-30|kahmad|0aace81d37804b29
 Unguwa Uku Primary Healthcare Center = 2026-06-29|idauda|a6aaa13d58984c1c
 Takai Comprehensive Centre = 2026-06-29|agarba2|a6aaa13d58984c1c
 Rigiyar Lemo MCH = 2026-06-29|adoafiz|a6aaa13d58984c1c
