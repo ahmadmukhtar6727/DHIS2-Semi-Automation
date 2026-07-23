@@ -26,6 +26,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService                  
 from webdriver_manager.microsoft import EdgeChromiumDriverManager  
 
@@ -138,7 +139,9 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
             return
 
         status_label.config(text="⚡ Launching Microsoft Edge...", foreground="#0056b3")
-        options = webdriver.EdgeOptions()
+        
+        # Fixed EdgeOptions initialization
+        options = EdgeOptions()
         options.add_argument("--start-maximized")
         
         service = EdgeService(EdgeChromiumDriverManager().install())
@@ -165,10 +168,8 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
 
         status_label.config(text="🔍 Verifying target facility in DHIS2 UI...", foreground="#0056b3")
         
-        # Upgraded JS check capturing React tree state, breadcrumbs, and selected active elements
         verify_org_script = """
         function getActiveOrgUnit() {
-            // 1. Target DHIS2 React Data Entry header / Breadcrumb selectors
             var selectors = [
                 "[data-test='org-unit-tree-node']",
                 "[class*='orgUnit']", 
@@ -185,7 +186,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
                 for (var j = 0; j < elements.length; j++) {
                     var text = elements[j].innerText || elements[j].textContent;
                     if (text && text.trim().length > 0) {
-                        // Look for active/highlighted node indicators
                         if (elements[j].className && (
                             elements[j].className.includes('selected') || 
                             elements[j].className.includes('active')
@@ -196,7 +196,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
                 }
             }
 
-            // 2. Check all currently highlighted or clicked nodes in tree components
             var activeNodes = document.querySelectorAll(".tree-node-selected, a.selected, li.selected > a, [class*='selected']");
             var foundTexts = [];
             activeNodes.forEach(function(node) {
@@ -208,7 +207,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
                 return foundTexts.join(" ");
             }
 
-            // 3. Inspect global DHIS2 JS objects
             if (typeof selection !== 'undefined' && selection.getSelected) {
                 var selectedUnits = selection.getSelected();
                 if (selectedUnits && selectedUnits.length > 0) {
@@ -216,7 +214,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
                 }
             }
             
-            // 4. Return whole page header context text as final validation fallback
             var topHeader = document.querySelector("#header, header, top-bar");
             return topHeader ? topHeader.innerText : document.body.innerText;
         }
@@ -224,7 +221,6 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         """
         current_ui_org = driver.execute_script(verify_org_script)
         
-        # Verify strict inclusion
         if current_ui_org and target_facility.strip().lower() not in current_ui_org.strip().lower():
             status_label.config(text="❌ Error: Facility Mismatch.", foreground="red")
             messagebox.showerror(
@@ -245,7 +241,7 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
         
         var filledCount = 0;
         var index = 0;
-        var batchSize = 30; // Throttles processing into small waves to prevent freezing the UI
+        var batchSize = 30;
 
         function processBatch() {
             var limit = Math.min(index + batchSize, fields.length);
@@ -264,9 +260,9 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
             }
             
             if (index < fields.length) {
-                setTimeout(processBatch, 40); // 40ms structural pause between batches
+                setTimeout(processBatch, 40);
             } else {
-                callback(filledCount); // Safely returns result to Selenium when finished
+                callback(filledCount);
             }
         }
         processBatch();
@@ -308,7 +304,7 @@ def on_facility_select(event):
     username_entry.config(state="normal")
     username_entry.delete(0, tk.END)
     username_entry.insert(0, assigned_user)
-    username_entry.config(state="readonly") # 🔒 Locks field from physical keyboard tampering
+    username_entry.config(state="readonly")
 
 def start_pipeline_thread():
     facility = facility_entry.get().strip()
