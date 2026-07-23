@@ -1,10 +1,10 @@
 [FACILITIES]
-Bichi General Hospital = 
+Bichi General Hospital = 2026-09-30|kahmad|d14ed8ee8abf7935
 Unguwa Uku Primary Healthcare Center = 2026-06-29|idauda|a6aaa13d58984c1c
 Takai Comprehensive Centre = 2026-06-29|agarba2|a6aaa13d58984c1c
 Rigiyar Lemo MCH = 2026-06-29|adoafiz|a6aaa13d58984c1c
 Doguwa General Hospital = 2026-06-29|sshuaibu|a6aaa13d58984c1c
 Wudil General Hospital = 2026-06-30|bkawu|ed1c44e4ee239579
 Nuhu Bamali Martenity Hospital = 2026-06-30|Msalisu|ed1c44e4ee239579
-Aminu Kano Teaching Hospital = 
-Tsanyawa Comprehensive Health Center = 
+Aminu Kano Teaching Hospital = 2026-08-09|Massistant|cd2045d8668b46c6
+Tsanyawa Comprehensive Health Center = 2026-08-01|mgarba|bc588276dea88bf8
