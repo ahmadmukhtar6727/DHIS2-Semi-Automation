@@ -165,46 +165,74 @@ def run_zero_filling_pipeline(target_facility, username, password, status_label,
 
         status_label.config(text="🔍 Verifying target facility in DHIS2 UI...", foreground="#0056b3")
         
-        # Robust JS check targeting DHIS2's active selection panel and global variables
+        # Upgraded JS check capturing React tree state, breadcrumbs, and selected active elements
         verify_org_script = """
-        // 1. Check DHIS2's active header/title displays for selected Org Unit
-        var displaySelectors = [
-            "#selectedOrgUnitName", "#selectedOrgUnit", 
-            "#orgUnitField", ".org-unit-title", ".selected-org-unit"
-        ];
-        for (var i = 0; i < displaySelectors.length; i++) {
-            var el = document.querySelector(displaySelectors[i]);
-            if (el && el.innerText.trim().length > 0) {
-                return el.innerText.trim();
+        function getActiveOrgUnit() {
+            // 1. Target DHIS2 React Data Entry header / Breadcrumb selectors
+            var selectors = [
+                "[data-test='org-unit-tree-node']",
+                "[class*='orgUnit']", 
+                "[class*='OrgUnit']",
+                "#selectedOrgUnitName",
+                "#selectedOrgUnit",
+                ".selected-org-unit",
+                ".org-unit-title",
+                "header [class*='title']"
+            ];
+            
+            for (var i = 0; i < selectors.length; i++) {
+                var elements = document.querySelectorAll(selectors[i]);
+                for (var j = 0; j < elements.length; j++) {
+                    var text = elements[j].innerText || elements[j].textContent;
+                    if (text && text.trim().length > 0) {
+                        // Look for active/highlighted node indicators
+                        if (elements[j].className && (
+                            elements[j].className.includes('selected') || 
+                            elements[j].className.includes('active')
+                        )) {
+                            return text.trim();
+                        }
+                    }
+                }
             }
-        }
-        
-        // 2. Check tree elements that have active selection classes
-        var activeNodes = document.querySelectorAll(".tree-node-selected, a.selected, li.selected > a");
-        if (activeNodes.length > 0) {
-            return activeNodes[activeNodes.length - 1].innerText.trim();
-        }
 
-        // 3. Fallback to DHIS2 global JS state if available
-        if (typeof selection !== 'undefined' && selection.getSelected) {
-            var selectedUnits = selection.getSelected();
-            if (selectedUnits && selectedUnits.length > 0) {
-                return selectedUnits[0];
+            // 2. Check all currently highlighted or clicked nodes in tree components
+            var activeNodes = document.querySelectorAll(".tree-node-selected, a.selected, li.selected > a, [class*='selected']");
+            var foundTexts = [];
+            activeNodes.forEach(function(node) {
+                if (node.innerText && node.innerText.trim()) {
+                    foundTexts.push(node.innerText.trim());
+                }
+            });
+            if (foundTexts.length > 0) {
+                return foundTexts.join(" ");
             }
+
+            // 3. Inspect global DHIS2 JS objects
+            if (typeof selection !== 'undefined' && selection.getSelected) {
+                var selectedUnits = selection.getSelected();
+                if (selectedUnits && selectedUnits.length > 0) {
+                    return selectedUnits[0];
+                }
+            }
+            
+            // 4. Return whole page header context text as final validation fallback
+            var topHeader = document.querySelector("#header, header, top-bar");
+            return topHeader ? topHeader.innerText : document.body.innerText;
         }
-        return "";
+        return getActiveOrgUnit();
         """
         current_ui_org = driver.execute_script(verify_org_script)
         
-        # Verify if the target facility name is part of the currently active Org Unit selection
+        # Verify strict inclusion
         if current_ui_org and target_facility.strip().lower() not in current_ui_org.strip().lower():
             status_label.config(text="❌ Error: Facility Mismatch.", foreground="red")
             messagebox.showerror(
                 "Security & Facility Enforcement", 
                 f"Unauthorized Facility Target!\n\n"
-                f"Selected in App: {target_facility}\n"
-                f"Active in DHIS2: {current_ui_org}\n\n"
-                f"Execution stopped. You can only run automation on the facility selected in your subscription dropdown."
+                f"Selected Subscribed Facility: {target_facility}\n"
+                f"Detected Active in Browser: {current_ui_org[:50]}...\n\n"
+                f"Execution stopped. You can only run automation on the facility matching your active subscription."
             )
             return
 
