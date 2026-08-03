@@ -7,4 +7,4 @@ Doguwa General Hospital = 2026-06-29|sshuaibu|a6aaa13d58984c1c
 Wudil General Hospital = 2026-06-30|bkawu|ed1c44e4ee239579
 Nuhu Bamalli Maternity Hospital = 2026-08-01|Msalisu|9b9033b3e667d239
 Aminu Kano Teaching Hospital = 2026-08-09|Massistant|694b5ad3dd614afa
-Tsanyawa Comprehensive Health Centre = 2026-08-02|mgarba|bf2e124a68c2adaf
+Tsanyawa Comprehensive Health Centre = 2026-09-03|mgarba|d18ce5e6e97733cd
