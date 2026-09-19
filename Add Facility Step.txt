@@ -1,0 +1,32 @@
+The Only 2 Steps to Add a New Facility:
+Moving forward, whenever a new facility registers with you via WhatsApp, you leave your Python code completely alone. You only do this:
+
+Open your data/allowed_facilities.txt file (either locally or directly on GitHub via your browser).
+
+Add the new facility line with their expiration date, username, and generated key under the [FACILITIES] header:
+
+Plaintext
+New Facility Name = 2026-06-26|new_username|generated_key_here
+3. Commit and push just that text file (if editing locally):
+   ```bash
+   git add data/allowed_facilities.txt
+   git commit -m "Add new facility license"
+   git push origin main
+
+
+Whe I touch or updated dhis2_app.py
+
+after deleting the dist, build and spec
+
+run
+
+pyinstaller --clean --noconsole --onefile dhis2_app.py
+
+What will happen immediately:
+New .spec file: PyInstaller creates this in your root folder to store the build configurations.
+
+New build folder: Created to hold temporary log files and metadata during compilation.
+
+New dist folder: Created containing your brand-new, updated dhis2_app.exe binary application—which will now perfectly display the 2,000 NGN price!
+
+Once it finishes, just remember to copy the new .exe file out of the fresh dist folder and place it in your final distribution folder next to your config.py file before zipping it up for your WhatsApp group! 
