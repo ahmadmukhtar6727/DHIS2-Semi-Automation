@@ -1,4 +1,4 @@
 [FACILITIES]
 Bichi General Hospital = 2026-11-29|kahmad|a57b6a762f640b3c
-Tsanyawa Comprehensive Health Centre = 2026-10-04|mgarba|7d90ce9169e4e2d
+Tsanyawa Comprehensive Health Centre = 2026-10-04|mgarba|7d90ce9169e4e2d7
 Aminu Kano Teaching Hospital = 2026-09-27|Massistant|a4ed5aecfe344c6a
