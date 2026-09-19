@@ -3,8 +3,7 @@ import sys
 import time
 import hashlib
 import datetime
-import urllib.request
-import urllib.error
+import requests
 import traceback
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -66,20 +65,23 @@ def local_load_facilities():
     
     try:
         print("🌐 Syncing subscription licenses from GitHub status endpoints...")
-        req = urllib.request.Request(
-            GITHUB_LICENSE_URL, 
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        )
-        with urllib.request.urlopen(req, timeout=7) as response:
-            content = response.read().decode('utf-8')
-            lines = content.splitlines()
-            
-            try:
-                os.makedirs(os.path.dirname(local_path), exist_ok=True)
-                with open(local_path, "w", encoding="utf-8") as backup_file:
-                    backup_file.write(content)
-            except Exception:
-                pass
+        cache_bust_url = f"{GITHUB_LICENSE_URL}?t={int(time.time())}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Cache-Control': 'no-cache'
+        }
+        response = requests.get(cache_bust_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        content = response.text
+        lines = content.splitlines()
+        
+        try:
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "w", encoding="utf-8") as backup_file:
+                backup_file.write(content)
+        except Exception:
+            pass
 
     except Exception as e:
         print(f"🛑 Network Error details: {str(e)}")

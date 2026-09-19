@@ -6,6 +6,7 @@ def generate_facility_license():
     print("🔐 DEPLOYMENT KEY GENERATOR SYSTEM (STREAMLINED)")
     print("==========================================================")
     
+    # Secret salt matching your dhis2_app.py validation logic
     SECRET_SALT = "AhmadMukhtarSecureDHIS2Key#2026"
     
     # 1. Collect Facility Name
@@ -33,21 +34,22 @@ def generate_facility_license():
         print("❌ Error: Invalid numerical date parameters.")
         return
 
-    # 🔐 Streamlined Calculation Strategy: Hash the expiry string + salt
+    # 🔐 Calculation Strategy: Hash expiry string + salt
     raw_string = f"{expiry_date_str}{SECRET_SALT}"
     activation_key = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()[:16]
     
+    # Formats string as: Facility Name = YYYY-MM-DD|username|16_char_hash
     github_line = f"{facility_name} = {expiry_date_str}|{username}|{activation_key}"
     
     print("\n" + "="*58)
     print("🎉 SECURE TOKEN GENERATED SUCCESSFULLY!")
     print("==========================================================")
-    print(f"🏢 Facility:  {facility_name}")
+    print(f"🏢 Facility:   {facility_name}")
     print(f"🔒 Locked To:  {username}")
     print(f"📅 Expires On: {expiry_date_str}")
     print(f"🔑 Key Token:  {activation_key}")
     print("-"*58)
-    print("📋 COPY AND PASTE THIS LINE DIRECTLY INTO GitHub (allowed_facilities.txt):")
+    print("📋 COPY AND PASTE THIS LINE DIRECTLY INTO GitHub (data/allowed_facilities.txt):")
     print("-"*58)
     print(github_line)
     print("==========================================================\n")
